@@ -16,12 +16,14 @@
 package main
 
 import (
+	"os"
 	"path/filepath"
 	"testing"
+
+	"github.com/udhos/equalfile"
 )
 
 func TestFindLatest(t *testing.T) {
-	var mm []mention
 	mm, err := readFile(filepath.Join("testdata", "page.json"))
 	if err != nil {
 		t.Fatal(err)
@@ -38,4 +40,42 @@ func TestReadFileErr(t *testing.T) {
 	if err == nil {
 		t.Fatalf("want error, got nil")
 	}
+}
+
+func TestWriteFile(t *testing.T) {
+	wantF := filepath.Join("testdata", "page.json")
+	gotF := filepath.Join("testdata", "page_processed.json")
+	mm, err := readFile(wantF)
+	if err != nil {
+		t.Fatal(err)
+	}
+	err = writeFile(mm, gotF)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer os.Remove(gotF)
+	if !filesEqual(t, wantF, gotF) {
+		t.Fatalf("files don't match")
+	}
+}
+
+func filesEqual(t *testing.T, newFile, oldFile string) bool {
+	t.Helper()
+	cmp := equalfile.New(nil, equalfile.Options{}) // compare using single mode
+	r1, err := os.Open(newFile)
+	if err != nil {
+		t.Fatalf("could not open %s", newFile)
+	}
+	defer r1.Close()
+	r2, err := os.Open(oldFile)
+	if err != nil {
+		t.Fatalf("could not open %s", oldFile)
+	}
+	defer r2.Close()
+
+	equal, err := cmp.CompareReader(r1, r2)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return !equal
 }

@@ -80,3 +80,13 @@ func findLatest(mm []mention) (latest int) {
 	}
 	return
 }
+
+func writeFile(mm []mention, fn string) error {
+	file := mentionFile{&mm}
+	b, err := json.Marshal(file)
+	if err != nil {
+		return err
+	}
+	err = ioutil.WriteFile(fn, b, 0644)
+	return err
+}
