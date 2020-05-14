@@ -16,6 +16,8 @@
 package main
 
 import (
+	"bytes"
+	"flag"
 	"fmt"
 	"io/ioutil"
 	"net/http"
@@ -23,8 +25,10 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+)
 
-	"github.com/udhos/equalfile"
+var (
+	update = flag.Bool("update", false, "update .golden files")
 )
 
 func TestFindLatest(t *testing.T) {
@@ -37,6 +41,16 @@ func TestFindLatest(t *testing.T) {
 	if got != want {
 		t.Fatalf("want %v, got %v", got, want)
 	}
+}
+
+func TestReadFile(t *testing.T) {
+	wantF := filepath.Join("testdata", "page.json")
+	golden := filepath.Join("testdata", "page_processed.json")
+	got, err := readFile(wantF)
+	if err != nil {
+		t.Fatal(err)
+	}
+	writeAndCompare(t, got, golden)
 }
 
 func TestReadFileErr(t *testing.T) {
@@ -55,44 +69,52 @@ func writeAndCompare(t *testing.T, mm []mention, fn string) {
 		t.Fatal(err)
 	}
 	defer os.Remove(gotF)
-	if !filesEqual(t, wantF, gotF) {
-		t.Fatalf("files don't match")
+	got, err := ioutil.ReadFile(gotF)
+	if err != nil {
+		t.Fatal(err)
 	}
+	assertGolden(t, got, wantF)
 }
 
-func TestGetPage(t *testing.T) {
+func TestGetNew(t *testing.T) {
 	pageF := filepath.Join("testdata", "page.json")
+	golden := filepath.Join("testdata", "page_processed.json")
 	page, _ := ioutil.ReadFile(pageF)
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		fmt.Fprintf(w, "%s", page)
+		if r.URL.Query().Get("page") == "" || r.URL.Query().Get("page") == "0" {
+			fmt.Fprintf(w, "%s", page)
+		} else {
+			fmt.Fprintf(w, "%s", `{"links":[]}`)
+		}
 	}))
 	defer ts.Close()
 
-	got, err := getPage(ts.URL)
+	got, err := getNew(ts.URL, 1)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	writeAndCompare(t, got, pageF)
+	writeAndCompare(t, got, golden)
 }
 
-func filesEqual(t *testing.T, newFile, oldFile string) bool {
+func assertGolden(t *testing.T, actual []byte, golden string) {
 	t.Helper()
-	cmp := equalfile.New(nil, equalfile.Options{}) // compare using single mode
-	r1, err := os.Open(newFile)
-	if err != nil {
-		t.Fatalf("could not open %s", newFile)
-	}
-	defer r1.Close()
-	r2, err := os.Open(oldFile)
-	if err != nil {
-		t.Fatalf("could not open %s", oldFile)
-	}
-	defer r2.Close()
 
-	equal, err := cmp.CompareReader(r1, r2)
-	if err != nil {
-		t.Fatal(err)
+	if *update {
+		if _, err := os.Stat(golden); os.IsNotExist(err) {
+			if err := ioutil.WriteFile(golden, actual, 0644); err != nil {
+				t.Fatal(err)
+			}
+		} else {
+			t.Log("file", golden, "exists, remove it to record new golden result")
+		}
 	}
-	return !equal
+	expected, err := ioutil.ReadFile(golden)
+	if err != nil {
+		t.Error("no file:", golden)
+	}
+
+	if !bytes.Equal(actual, expected) {
+		t.Fatalf("want:\n%s\ngot:\n%s\n", expected, actual)
+	}
 }

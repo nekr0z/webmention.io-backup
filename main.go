@@ -16,10 +16,13 @@
 package main
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"net/http"
+	"net/url"
+	"strconv"
 	"time"
 )
 
@@ -83,11 +86,14 @@ func findLatest(mm []mention) (latest int) {
 
 func writeFile(mm []mention, fn string) error {
 	file := mentionFile{&mm}
-	b, err := json.Marshal(file)
+	var bb bytes.Buffer
+	enc := json.NewEncoder(&bb)
+	enc.SetEscapeHTML(false)
+	err := enc.Encode(file)
 	if err != nil {
 		return err
 	}
-	err = ioutil.WriteFile(fn, b, 0644)
+	err = ioutil.WriteFile(fn, bb.Bytes(), 0644)
 	return err
 }
 
@@ -108,5 +114,38 @@ func getPage(url string) (mm []mention, err error) {
 func parsePage(b []byte) (mm []mention, err error) {
 	file := mentionFile{&mm}
 	err = json.Unmarshal(b, &file)
+	return
+}
+
+func getNew(url string, latest int) (mm []mention, err error) {
+	if err != nil {
+		return
+	}
+
+	ok := true
+
+	for i := 0; ok; i++ {
+		m, err := getNextPage(url, i)
+		if err != nil {
+			return mm, err
+		}
+		mm = append(mm, m...)
+		if len(m) == 0 {
+			ok = false
+		}
+	}
+
+	return
+}
+
+func getNextPage(uri string, page int) (mm []mention, err error) {
+	u, err := url.Parse(uri)
+	if err != nil {
+		return
+	}
+	q := u.Query()
+	q.Set("page", strconv.Itoa(page))
+	u.RawQuery = q.Encode()
+	mm, err = getPage(u.String())
 	return
 }
