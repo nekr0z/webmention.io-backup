@@ -19,6 +19,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
+	"net/http"
 	"time"
 )
 
@@ -63,12 +64,11 @@ func main() {
 }
 
 func readFile(fn string) (mm []mention, err error) {
-	file := mentionFile{&mm}
 	data, err := ioutil.ReadFile(fn)
 	if err != nil {
 		return
 	}
-	err = json.Unmarshal(data, &file)
+	mm, err = parsePage(data)
 	return
 }
 
@@ -89,4 +89,24 @@ func writeFile(mm []mention, fn string) error {
 	}
 	err = ioutil.WriteFile(fn, b, 0644)
 	return err
+}
+
+func getPage(url string) (mm []mention, err error) {
+	resp, err := http.Get(url)
+	if err != nil {
+		return
+	}
+	defer resp.Body.Close()
+	b, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return
+	}
+	mm, err = parsePage(b)
+	return
+}
+
+func parsePage(b []byte) (mm []mention, err error) {
+	file := mentionFile{&mm}
+	err = json.Unmarshal(b, &file)
+	return
 }

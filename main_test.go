@@ -16,6 +16,10 @@
 package main
 
 import (
+	"fmt"
+	"io/ioutil"
+	"net/http"
+	"net/http/httptest"
 	"os"
 	"path/filepath"
 	"testing"
@@ -42,14 +46,11 @@ func TestReadFileErr(t *testing.T) {
 	}
 }
 
-func TestWriteFile(t *testing.T) {
-	wantF := filepath.Join("testdata", "page.json")
-	gotF := filepath.Join("testdata", "page_processed.json")
-	mm, err := readFile(wantF)
-	if err != nil {
-		t.Fatal(err)
-	}
-	err = writeFile(mm, gotF)
+func writeAndCompare(t *testing.T, mm []mention, fn string) {
+	t.Helper()
+	wantF := filepath.Join(fn)
+	gotF := filepath.Join("testdata", "test_output.json")
+	err := writeFile(mm, gotF)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -57,6 +58,22 @@ func TestWriteFile(t *testing.T) {
 	if !filesEqual(t, wantF, gotF) {
 		t.Fatalf("files don't match")
 	}
+}
+
+func TestGetPage(t *testing.T) {
+	pageF := filepath.Join("testdata", "page.json")
+	page, _ := ioutil.ReadFile(pageF)
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		fmt.Fprintf(w, "%s", page)
+	}))
+	defer ts.Close()
+
+	got, err := getPage(ts.URL)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	writeAndCompare(t, got, pageF)
 }
 
 func filesEqual(t *testing.T, newFile, oldFile string) bool {
