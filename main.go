@@ -83,6 +83,7 @@ func main() {
 	if err != nil {
 		fmt.Println(err)
 	}
+	fmt.Printf("found %d existing webmentions\n", len(mm))
 
 	m, err := getNew(url, findLatest(mm))
 	if err != nil {
@@ -93,10 +94,13 @@ func main() {
 	if len(m) == 0 {
 		fmt.Println("no new webmentions")
 	} else {
+		fmt.Printf("appending %d new webmentions\n", len(m))
 		mm = append(mm, m...)
 		err = writeFile(mm, filename)
 		if err != nil {
 			fmt.Println(err)
+		} else {
+			fmt.Printf("saved %d webmentions to %s\n", len(mm), filename)
 		}
 	}
 
