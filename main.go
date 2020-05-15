@@ -117,15 +117,20 @@ func parsePage(b []byte) (mm []mention, err error) {
 	return
 }
 
-func getNew(url string, latest int) (mm []mention, err error) {
+func getNew(uri string, latest int) (mm []mention, err error) {
+	u, err := url.Parse(uri)
 	if err != nil {
 		return
 	}
 
+	q := u.Query()
+	q.Set("since_id", strconv.Itoa(latest))
+	u.RawQuery = q.Encode()
+
 	ok := true
 
 	for i := 0; ok; i++ {
-		m, err := getNextPage(url, i)
+		m, err := getNextPage(u, i)
 		if err != nil {
 			return mm, err
 		}
@@ -138,11 +143,7 @@ func getNew(url string, latest int) (mm []mention, err error) {
 	return
 }
 
-func getNextPage(uri string, page int) (mm []mention, err error) {
-	u, err := url.Parse(uri)
-	if err != nil {
-		return
-	}
+func getNextPage(u *url.URL, page int) (mm []mention, err error) {
 	q := u.Query()
 	q.Set("page", strconv.Itoa(page))
 	u.RawQuery = q.Encode()

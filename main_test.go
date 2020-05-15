@@ -81,6 +81,9 @@ func TestGetNew(t *testing.T) {
 	golden := filepath.Join("testdata", "page_processed.json")
 	page, _ := ioutil.ReadFile(pageF)
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Query().Get("since_id") != "20" {
+			t.Fatalf("expected since_id not in request")
+		}
 		if r.URL.Query().Get("page") == "" || r.URL.Query().Get("page") == "0" {
 			fmt.Fprintf(w, "%s", page)
 		} else {
@@ -89,7 +92,7 @@ func TestGetNew(t *testing.T) {
 	}))
 	defer ts.Close()
 
-	got, err := getNew(ts.URL, 1)
+	got, err := getNew(ts.URL, 20)
 	if err != nil {
 		t.Fatal(err)
 	}
