@@ -18,13 +18,23 @@ package main
 import (
 	"bytes"
 	"encoding/json"
+	"flag"
 	"fmt"
 	"io/ioutil"
 	"net/http"
 	"net/url"
+	"os"
 	"strconv"
 	"time"
 )
+
+const endpoint = "https://webmention.io/api/mentions"
+
+var (
+	filename, token string
+)
+
+var version string = "custom"
 
 type mention struct {
 	Source       string          `json:"source"`
@@ -63,7 +73,34 @@ type mentionFile struct {
 }
 
 func main() {
-	fmt.Println("vim-go")
+	fmt.Printf("webmention.io-backup version %s\n", version)
+	flag.StringVar(&filename, "f", "webmentions.json", "filename")
+	flag.StringVar(&token, "t", "", "API token")
+	flag.Parse()
+	url := fmt.Sprintf("%s?token=%s", endpoint, token)
+
+	mm, err := readFile(filename)
+	if err != nil {
+		fmt.Println(err)
+	}
+
+	m, err := getNew(url, findLatest(mm))
+	if err != nil {
+		fmt.Println(err)
+		os.Exit(1)
+	}
+
+	if len(m) == 0 {
+		fmt.Println("no new webmentions")
+	} else {
+		mm = append(mm, m...)
+		err = writeFile(mm, filename)
+		if err != nil {
+			fmt.Println(err)
+		}
+	}
+
+	fmt.Println("all done!")
 }
 
 func readFile(fn string) (mm []mention, err error) {
