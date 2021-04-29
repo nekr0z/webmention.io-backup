@@ -13,13 +13,11 @@ env:
 before_install:
 
 install:
-  - bash <(curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b $(go env GOPATH)/bin v1.27.0)
 
 before_script:
 
 script:
   - go vet ./...
-  - golangci-lint run
   - go test -v -race -coverprofile=coverage.txt -covermode=atomic ./...
   - go build
 
