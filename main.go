@@ -142,7 +142,7 @@ func parsePage(b []byte) (mm []interface{}, err error) {
 	case map[string]interface{}:
 		mentions, ok := m["links"]
 		if !ok {
-			mentions, _ = m["children"]
+			mentions = m["children"]
 		}
 		if mnts, ok := mentions.([]interface{}); ok {
 			mm = mnts
