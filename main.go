@@ -27,7 +27,6 @@ import (
 	"net/url"
 	"os"
 	"strconv"
-	"time"
 )
 
 const endpoint = "https://webmention.io/api/mentions"
@@ -38,40 +37,8 @@ var (
 
 var version string = "custom"
 
-type mention struct {
-	Source       string          `json:"source"`
-	Verified     bool            `json:"verified"`
-	VerifiedDate time.Time       `json:"verified_date"`
-	Id           int             `json:"id"`
-	Private      bool            `json:"private"`
-	Target       string          `json:"target"`
-	Data         mentionData     `json:"data"`
-	Activity     mentionActivity `json:"activity"`
-}
-
-type mentionData struct {
-	Author      mentionAuthor `json:"author"`
-	Url         string        `json:"url"`
-	Name        string        `json:"name"`
-	Content     string        `json:"content"`
-	Published   time.Time     `json:"published"`
-	PublishedTs int           `json:"published_ts"`
-}
-
-type mentionAuthor struct {
-	Name  string `json:"name"`
-	Url   string `json:"url"`
-	Photo string `json:"photo"`
-}
-
-type mentionActivity struct {
-	TypeOf       string `json:"type"`
-	Sentence     string `json:"sentence"`
-	SentenceHtml string `json:"sentence_html"`
-}
-
 type mentionFile struct {
-	Links *[]mention `json:"links"`
+	Links *[]interface{} `json:"links"`
 }
 
 func main() {
@@ -109,7 +76,7 @@ func main() {
 	fmt.Println("all done!")
 }
 
-func readFile(fn string) (mm []mention, err error) {
+func readFile(fn string) (mm []interface{}, err error) {
 	data, err := ioutil.ReadFile(fn)
 	if err != nil {
 		return
@@ -118,16 +85,22 @@ func readFile(fn string) (mm []mention, err error) {
 	return
 }
 
-func findLatest(mm []mention) (latest int) {
-	for _, m := range mm {
-		if m.Id > latest {
-			latest = m.Id
+func findLatest(mm []interface{}) (latest int) {
+	for _, f := range mm {
+		m, _ := f.(map[string]interface{})
+		if id, ok := m["id"]; ok {
+			if l, ok := id.(float64); ok {
+				this := int(l)
+				if this > latest {
+					latest = this
+				}
+			}
 		}
 	}
 	return
 }
 
-func writeFile(mm []mention, fn string) error {
+func writeFile(mm []interface{}, fn string) error {
 	file := mentionFile{&mm}
 	var bb bytes.Buffer
 	enc := json.NewEncoder(&bb)
@@ -140,7 +113,7 @@ func writeFile(mm []mention, fn string) error {
 	return err
 }
 
-func getPage(url string) (mm []mention, err error) {
+func getPage(url string) (mm []interface{}, err error) {
 	resp, err := http.Get(url)
 	if err != nil {
 		return
@@ -154,13 +127,27 @@ func getPage(url string) (mm []mention, err error) {
 	return
 }
 
-func parsePage(b []byte) (mm []mention, err error) {
-	file := mentionFile{&mm}
-	err = json.Unmarshal(b, &file)
+func parsePage(b []byte) (mm []interface{}, err error) {
+	var f interface{}
+	err = json.Unmarshal(b, &f)
+	m, ok := f.(map[string]interface{})
+	if !ok {
+		err = fmt.Errorf("could not parse JSON page")
+		return
+	}
+	links, ok := m["links"]
+	if !ok {
+		err = fmt.Errorf("JSON does not contain a list of links")
+		return
+	}
+	if mnts, ok := links.([]interface{}); ok {
+		mm = mnts
+	}
+
 	return
 }
 
-func getNew(uri string, latest int) (mm []mention, err error) {
+func getNew(uri string, latest int) (mm []interface{}, err error) {
 	u, err := url.Parse(uri)
 	if err != nil {
 		return
@@ -186,7 +173,7 @@ func getNew(uri string, latest int) (mm []mention, err error) {
 	return
 }
 
-func getNextPage(u *url.URL, page int) (mm []mention, err error) {
+func getNextPage(u *url.URL, page int) (mm []interface{}, err error) {
 	q := u.Query()
 	q.Set("page", strconv.Itoa(page))
 	u.RawQuery = q.Encode()

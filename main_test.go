@@ -60,7 +60,7 @@ func TestReadFileErr(t *testing.T) {
 	}
 }
 
-func writeAndCompare(t *testing.T, mm []mention, fn string) {
+func writeAndCompare(t *testing.T, mm []interface{}, fn string) {
 	t.Helper()
 	wantF := filepath.Join(fn)
 	gotF := filepath.Join("testdata", "test_output.json")
