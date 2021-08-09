@@ -39,10 +39,19 @@ var version string = "custom"
 
 func main() {
 	fmt.Printf("webmention.io-backup version %s\n", version)
+
+	var useJF2 bool
+
 	flag.StringVar(&filename, "f", "webmentions.json", "filename")
 	flag.StringVar(&token, "t", "", "API token")
+	flag.BoolVar(&useJF2, "jf2", false, "use JF2 endpoint instead of the classic one")
 	flag.Parse()
-	url := fmt.Sprintf("%s?token=%s", endpoint, token)
+
+	var ep string
+	if useJF2 {
+		ep = ".jf2"
+	}
+	url := fmt.Sprintf("%s%s?token=%s", endpoint, ep, token)
 
 	mm, err := readFile(filename)
 	if err != nil {
@@ -127,13 +136,16 @@ func parsePage(b []byte) (mm []interface{}, err error) {
 	err = json.Unmarshal(b, &f)
 
 	// can be classic api/mentions with "links" array as a root object
+	// or JF2 feed
 	// or just an array of objects like we write it
 	switch m := f.(type) {
 	case map[string]interface{}:
-		if links, ok := m["links"]; ok {
-			if mnts, ok := links.([]interface{}); ok {
-				mm = mnts
-			}
+		mentions, ok := m["links"]
+		if !ok {
+			mentions, _ = m["children"]
+		}
+		if mnts, ok := mentions.([]interface{}); ok {
+			mm = mnts
 		}
 	case []interface{}:
 		mm = m

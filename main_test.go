@@ -48,8 +48,9 @@ func TestReadFile(t *testing.T) {
 		inFile     string
 		goldenFile string
 	}{
-		"api/mentions": {"page.json", "page_processed.json"},
-		"simple list":  {"single_file.json", "single_file_processed.json"},
+		"api/mentions":     {"page.json", "page_processed.json"},
+		"api/mentions.jf2": {"jf2.json", "jf2_processed.json"},
+		"simple list":      {"single_file.json", "single_file_processed.json"},
 	}
 
 	for name, tc := range tt {
