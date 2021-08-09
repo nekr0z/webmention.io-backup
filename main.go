@@ -37,10 +37,6 @@ var (
 
 var version string = "custom"
 
-type mentionFile struct {
-	Links *[]interface{} `json:"links"`
-}
-
 func main() {
 	fmt.Printf("webmention.io-backup version %s\n", version)
 	flag.StringVar(&filename, "f", "webmentions.json", "filename")
