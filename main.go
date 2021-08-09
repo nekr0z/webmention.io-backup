@@ -101,11 +101,10 @@ func findLatest(mm []interface{}) (latest int) {
 }
 
 func writeFile(mm []interface{}, fn string) error {
-	file := mentionFile{&mm}
 	var bb bytes.Buffer
 	enc := json.NewEncoder(&bb)
 	enc.SetEscapeHTML(false)
-	err := enc.Encode(file)
+	err := enc.Encode(mm)
 	if err != nil {
 		return err
 	}
@@ -130,18 +129,20 @@ func getPage(url string) (mm []interface{}, err error) {
 func parsePage(b []byte) (mm []interface{}, err error) {
 	var f interface{}
 	err = json.Unmarshal(b, &f)
-	m, ok := f.(map[string]interface{})
-	if !ok {
-		err = fmt.Errorf("could not parse JSON page")
-		return
-	}
-	links, ok := m["links"]
-	if !ok {
-		err = fmt.Errorf("JSON does not contain a list of links")
-		return
-	}
-	if mnts, ok := links.([]interface{}); ok {
-		mm = mnts
+
+	// can be classic api/mentions with "links" array as a root object
+	// or just an array of objects like we write it
+	switch m := f.(type) {
+	case map[string]interface{}:
+		if links, ok := m["links"]; ok {
+			if mnts, ok := links.([]interface{}); ok {
+				mm = mnts
+			}
+		}
+	case []interface{}:
+		mm = m
+	default:
+		err = fmt.Errorf("could not parse JSON")
 	}
 
 	return

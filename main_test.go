@@ -44,13 +44,25 @@ func TestFindLatest(t *testing.T) {
 }
 
 func TestReadFile(t *testing.T) {
-	wantF := filepath.Join("testdata", "page.json")
-	golden := filepath.Join("testdata", "page_processed.json")
-	got, err := readFile(wantF)
-	if err != nil {
-		t.Fatal(err)
+	tt := map[string]struct {
+		inFile     string
+		goldenFile string
+	}{
+		"api/mentions": {"page.json", "page_processed.json"},
+		"simple list":  {"single_file.json", "single_file_processed.json"},
 	}
-	writeAndCompare(t, got, golden)
+
+	for name, tc := range tt {
+		t.Run(name, func(t *testing.T) {
+			wantF := filepath.Join("testdata", tc.inFile)
+			golden := filepath.Join("testdata", tc.goldenFile)
+			got, err := readFile(wantF)
+			if err != nil {
+				t.Fatal(err)
+			}
+			writeAndCompare(t, got, golden)
+		})
+	}
 }
 
 func TestReadFileErr(t *testing.T) {
