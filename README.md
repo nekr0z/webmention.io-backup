@@ -34,7 +34,7 @@ the name of the file to save webmentions to (and read the already backed-up webm
 ```
 -jf2
 ```
-use the `api/mentions.jf2` endpoint instead of `api/mentions`. The produced JSON will naturally be JF2 in this case.
+use the `/api/mentions.jf2` endpoint instead of `/api/mentions`. The produced JSON will naturally be JF2 in this case.
 
 ```
 -tlo=false

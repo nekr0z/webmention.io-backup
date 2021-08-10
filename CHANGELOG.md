@@ -6,7 +6,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 ### Added
-* option to only query webmentions for specific domain
+* option to only query webmentions for a specific domain
 * option to have the top-level object in the output file
 
 ### Fixed
