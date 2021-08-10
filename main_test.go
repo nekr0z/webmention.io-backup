@@ -33,14 +33,24 @@ var (
 )
 
 func TestFindLatest(t *testing.T) {
-	mm, err := readFile(filepath.Join("testdata", "page.json"))
-	if err != nil {
-		t.Fatal(err)
+	tt := map[string]struct {
+		file string
+		want int
+	}{
+		"legacy": {"page.json", 792685},
+		"jf2":    {"jf2.json", 1183052},
 	}
-	got := findLatest(mm)
-	want := 792685
-	if got != want {
-		t.Fatalf("want %v, got %v", got, want)
+	for name, tc := range tt {
+		t.Run(name, func(t *testing.T) {
+			mm, err := readFile(filepath.Join("testdata", tc.file))
+			if err != nil {
+				t.Fatal(err)
+			}
+			got := findLatest(mm)
+			if got != tc.want {
+				t.Fatalf("want %v, got %v", got, tc.want)
+			}
+		})
 	}
 }
 

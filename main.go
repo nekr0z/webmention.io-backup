@@ -51,7 +51,6 @@ func main() {
 	flag.BoolVar(&config.useJF2, "jf2", false, "use JF2 endpoint instead of the classic one")
 	flag.BoolVar(&config.tlo, "tlo", true, "wrap output in a top-level object (links list or feed)")
 	flag.Parse()
-	fmt.Println(config)
 	url := endpointUrl(config)
 
 	mm, err := readFile(config.filename)
@@ -94,12 +93,14 @@ func readFile(fn string) (mm []interface{}, err error) {
 func findLatest(mm []interface{}) (latest int) {
 	for _, f := range mm {
 		m, _ := f.(map[string]interface{})
-		if id, ok := m["id"]; ok {
-			if l, ok := id.(float64); ok {
-				this := int(l)
-				if this > latest {
-					latest = this
-				}
+		id, ok := m["id"]
+		if !ok {
+			id = m["wm-id"]
+		}
+		if l, ok := id.(float64); ok {
+			this := int(l)
+			if this > latest {
+				latest = this
 			}
 		}
 	}
