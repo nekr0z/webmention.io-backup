@@ -36,6 +36,7 @@ type cfg struct {
 	token    string
 	domain   string
 	useJF2   bool
+	tlo      bool
 }
 
 var version string = "custom"
@@ -43,13 +44,14 @@ var version string = "custom"
 func main() {
 	fmt.Printf("webmention.io-backup version %s\n", version)
 
-	config := cfg{
-		filename: *flag.String("f", "webmentions.json", "filename"),
-		token:    *flag.String("t", "", "API token"),
-		domain:   *flag.String("d", "", "domain to fetch webmentions for"),
-		useJF2:   *flag.Bool("jf2", false, "use JF2 endpoint instead of the classic one"),
-	}
+	config := cfg{}
+	flag.StringVar(&config.filename, "f", "webmentions.json", "filename")
+	flag.StringVar(&config.token, "t", "", "API token")
+	flag.StringVar(&config.domain, "d", "", "domain to fetch webmentions for")
+	flag.BoolVar(&config.useJF2, "jf2", false, "use JF2 endpoint instead of the classic one")
+	flag.BoolVar(&config.tlo, "tlo", true, "wrap output in a top-level object (links list or feed)")
 	flag.Parse()
+	fmt.Println(config)
 	url := endpointUrl(config)
 
 	mm, err := readFile(config.filename)
@@ -69,7 +71,7 @@ func main() {
 	} else {
 		fmt.Printf("appending %d new webmentions\n", len(m))
 		mm = append(mm, m...)
-		err = writeFile(mm, config.filename)
+		err = writeFile(mm, config)
 		if err != nil {
 			fmt.Println(err)
 		} else {
@@ -104,15 +106,31 @@ func findLatest(mm []interface{}) (latest int) {
 	return
 }
 
-func writeFile(mm []interface{}, fn string) error {
+func writeFile(mm []interface{}, c cfg) error {
 	var bb bytes.Buffer
+	var f interface{}
+	if !c.tlo {
+		f = mm
+	} else {
+		if c.useJF2 {
+			f = struct {
+				Type     string        `json:"type"`
+				Name     string        `json:"name"`
+				Children []interface{} `json:"children"`
+			}{"feed", "Webmentions", mm}
+		} else {
+			f = struct {
+				Links []interface{} `json:"links"`
+			}{mm}
+		}
+	}
 	enc := json.NewEncoder(&bb)
 	enc.SetEscapeHTML(false)
-	err := enc.Encode(mm)
+	err := enc.Encode(f)
 	if err != nil {
 		return err
 	}
-	err = ioutil.WriteFile(fn, bb.Bytes(), 0644)
+	err = ioutil.WriteFile(c.filename, bb.Bytes(), 0644)
 	return err
 }
 

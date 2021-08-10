@@ -36,6 +36,11 @@ the name of the file to save webmentions to (and read the already backed-up webm
 ```
 use the `api/mentions.jf2` endpoint instead of `api/mentions`. The produced JSON will naturally be JF2 in this case.
 
+```
+-tlo=false
+```
+don't create the top-level object in the saved file (i.e. save as an array of webmentions).
+
 ## Development
 Issues reports and pull requests are always welcome!
 

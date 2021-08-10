@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 ### Added
 * option to only query webmentions for specific domain
+* option to have the top-level object in the output file
+
+### Fixed
+* default behaviour to use the top-level object (broken in 1.1.0)
 
 ## 1.1.0 - 2021-08-09
 ### Changed

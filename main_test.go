@@ -62,7 +62,7 @@ func TestReadFile(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			writeAndCompare(t, got, golden)
+			writeAndCompare(t, got, cfg{tlo: false}, golden)
 		})
 	}
 }
@@ -74,16 +74,34 @@ func TestReadFileErr(t *testing.T) {
 	}
 }
 
-func writeAndCompare(t *testing.T, mm []interface{}, fn string) {
+func TestWriteFile(t *testing.T) {
+	tt := map[string]struct {
+		config  cfg
+		goldenF string
+	}{
+		"legacy":   {cfg{useJF2: false, tlo: true}, "legacy.out"},
+		"JF2 feed": {cfg{useJF2: true, tlo: true}, "jf2.out"},
+		"array":    {cfg{useJF2: false, tlo: false}, "array.out"},
+	}
+
+	for name, tc := range tt {
+		t.Run(name, func(t *testing.T) {
+			mm := []interface{}{}
+			writeAndCompare(t, mm, tc.config, tc.goldenF)
+		})
+	}
+}
+
+func writeAndCompare(t *testing.T, mm []interface{}, c cfg, fn string) {
 	t.Helper()
 	wantF := filepath.Join(fn)
-	gotF := filepath.Join("testdata", "test_output.json")
-	err := writeFile(mm, gotF)
+	c.filename = filepath.Join("testdata", "test_output.json")
+	err := writeFile(mm, c)
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer os.Remove(gotF)
-	got, err := ioutil.ReadFile(gotF)
+	defer os.Remove(c.filename)
+	got, err := ioutil.ReadFile(c.filename)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -111,7 +129,7 @@ func TestGetNew(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	writeAndCompare(t, got, golden)
+	writeAndCompare(t, got, cfg{tlo: false}, golden)
 }
 
 func assertGolden(t *testing.T, actual []byte, golden string) {
@@ -141,9 +159,9 @@ func TestEndpointUrl(t *testing.T) {
 		config cfg
 		want   string
 	}{
-		"token":  {cfg{"", "t0K3n", "", false}, "?token=t0K3n"},
-		"jf2":    {cfg{"", "", "", true}, ".jf2"},
-		"domain": {cfg{"", "", "example.org", false}, "?domain=example.org"},
+		"token":  {cfg{token: "t0K3n"}, "?token=t0K3n"},
+		"jf2":    {cfg{useJF2: true}, ".jf2"},
+		"domain": {cfg{domain: "example.org"}, "?domain=example.org"},
 	}
 
 	for name, tc := range tt {
