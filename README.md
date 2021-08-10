@@ -22,6 +22,11 @@ Simpy run in command line with the desired options. For regular backups, set up 
 the API token for `webmention.io`.
 
 ```
+-d [domain]
+```
+only ask for webmentions received for specific domain (i.e. `example.org`); all the domains associated with the account will be processed otherwise.
+
+```
 -f [filename]
 ```
 the name of the file to save webmentions to (and read the already backed-up webmentions from). Defaults to `webmentions.json` in current directory.

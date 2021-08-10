@@ -31,29 +31,28 @@ import (
 
 const endpoint = "https://webmention.io/api/mentions"
 
-var (
-	filename, token string
-)
+type cfg struct {
+	filename string
+	token    string
+	domain   string
+	useJF2   bool
+}
 
 var version string = "custom"
 
 func main() {
 	fmt.Printf("webmention.io-backup version %s\n", version)
 
-	var useJF2 bool
-
-	flag.StringVar(&filename, "f", "webmentions.json", "filename")
-	flag.StringVar(&token, "t", "", "API token")
-	flag.BoolVar(&useJF2, "jf2", false, "use JF2 endpoint instead of the classic one")
-	flag.Parse()
-
-	var ep string
-	if useJF2 {
-		ep = ".jf2"
+	config := cfg{
+		filename: *flag.String("f", "webmentions.json", "filename"),
+		token:    *flag.String("t", "", "API token"),
+		domain:   *flag.String("d", "", "domain to fetch webmentions for"),
+		useJF2:   *flag.Bool("jf2", false, "use JF2 endpoint instead of the classic one"),
 	}
-	url := fmt.Sprintf("%s%s?token=%s", endpoint, ep, token)
+	flag.Parse()
+	url := endpointUrl(config)
 
-	mm, err := readFile(filename)
+	mm, err := readFile(config.filename)
 	if err != nil {
 		fmt.Println(err)
 	}
@@ -70,11 +69,11 @@ func main() {
 	} else {
 		fmt.Printf("appending %d new webmentions\n", len(m))
 		mm = append(mm, m...)
-		err = writeFile(mm, filename)
+		err = writeFile(mm, config.filename)
 		if err != nil {
 			fmt.Println(err)
 		} else {
-			fmt.Printf("saved %d webmentions to %s\n", len(mm), filename)
+			fmt.Printf("saved %d webmentions to %s\n", len(mm), config.filename)
 		}
 	}
 
@@ -188,4 +187,27 @@ func getNextPage(u *url.URL, page int) (mm []interface{}, err error) {
 	u.RawQuery = q.Encode()
 	mm, err = getPage(u.String())
 	return
+}
+
+func endpointUrl(c cfg) string {
+	q := url.Values{}
+	vv := map[string]string{
+		"token":  c.token,
+		"domain": c.domain,
+	}
+	for k, v := range vv {
+		if v != "" {
+			q.Set(k, v)
+		}
+	}
+
+	var e string
+	if c.useJF2 {
+		e = ".jf2"
+	}
+	ep := fmt.Sprintf("%s%s", endpoint, e)
+
+	u, _ := url.Parse(ep)
+	u.RawQuery = q.Encode()
+	return u.String()
 }

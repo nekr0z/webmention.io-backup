@@ -24,6 +24,7 @@ import (
 	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 )
 
@@ -132,5 +133,25 @@ func assertGolden(t *testing.T, actual []byte, golden string) {
 
 	if !bytes.Equal(actual, expected) {
 		t.Fatalf("want:\n%s\ngot:\n%s\n", expected, actual)
+	}
+}
+
+func TestEndpointUrl(t *testing.T) {
+	tt := map[string]struct {
+		config cfg
+		want   string
+	}{
+		"token":  {cfg{"", "t0K3n", "", false}, "?token=t0K3n"},
+		"jf2":    {cfg{"", "", "", true}, ".jf2"},
+		"domain": {cfg{"", "", "example.org", false}, "?domain=example.org"},
+	}
+
+	for name, tc := range tt {
+		t.Run(name, func(t *testing.T) {
+			got := strings.TrimPrefix(endpointUrl(tc.config), endpoint)
+			if got != tc.want {
+				t.Fatalf("want:\n%s\ngot:\n%s\n", tc.want, got)
+			}
+		})
 	}
 }
