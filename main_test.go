@@ -97,7 +97,7 @@ func TestWriteFile(t *testing.T) {
 	for name, tc := range tt {
 		t.Run(name, func(t *testing.T) {
 			mm := []interface{}{}
-			writeAndCompare(t, mm, tc.config, tc.goldenF)
+			writeAndCompare(t, mm, tc.config, filepath.Join("testdata", tc.goldenF))
 		})
 	}
 }
