@@ -191,23 +191,23 @@ func saveToFile(m interface{}, c cfg) (err error) {
 	return
 }
 
-func sameMention(ma interface{}, mb interface{}) bool {
+func sameMention(ma, mb interface{}) bool {
 	mapa, oka := ma.(map[string]interface{})
 	mapb, okb := mb.(map[string]interface{})
 	if !oka || !okb {
 		return false
 	}
 
-	sa := either(mapa, []string{"source", "wm-source"})
-	sb := either(mapb, []string{"source", "wm-source"})
+	q := []string{"source", "wm-source"}
+	sa, sb := either(mapa, q), either(mapb, q)
 	oa, oka := sa.(string)
 	ob, okb := sb.(string)
 	if !oka || !okb || oa != ob {
 		return false
 	}
 
-	sa = either(mapa, []string{"verified_date", "wm-received"})
-	sb = either(mapb, []string{"verified_date", "wm-received"})
+	q = []string{"verified_date", "wm-received"}
+	sa, sb = either(mapa, q), either(mapb, q)
 	oa, oka = sa.(string)
 	ob, okb = sb.(string)
 	ta, err := time.Parse(time.RFC3339, oa)
