@@ -1,7 +1,7 @@
 # webmention.io-backup
 a little tool to backup webmentions stored in [webmention.io](https://webmention.io/)
 
-[![Build Status](https://travis-ci.org/nekr0z/webmention.io-backup.svg?branch=master)](https://travis-ci.org/nekr0z/webmention.io-backup) [![codecov](https://codecov.io/gh/nekr0z/webmention.io-backup/branch/master/graph/badge.svg)](https://codecov.io/gh/nekr0z/webmention.io-backup) [![Go Report Card](https://goreportcard.com/badge/github.com/nekr0z/webmention.io-backup)](https://goreportcard.com/report/github.com/nekr0z/webmention.io-backup)
+[![Build Status](https://github.com/nekr0z/webmention.io-backup/actions/workflows/pre-release.yml/badge.svg)](https://github.com/nekr0z/webmention.io-backup/releases/tag/latest) [![codecov](https://codecov.io/gh/nekr0z/webmention.io-backup/branch/master/graph/badge.svg)](https://codecov.io/gh/nekr0z/webmention.io-backup) [![Go Report Card](https://goreportcard.com/badge/github.com/nekr0z/webmention.io-backup)](https://goreportcard.com/report/github.com/nekr0z/webmention.io-backup)
 
 ##### Table of Contents
 * [How to use](#how)
