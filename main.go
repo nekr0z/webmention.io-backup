@@ -26,17 +26,23 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"path"
+	"path/filepath"
 	"strconv"
+	"strings"
+	"time"
 )
 
 const endpoint = "https://webmention.io/api/mentions"
 
 type cfg struct {
-	filename string
-	token    string
-	domain   string
-	useJF2   bool
-	tlo      bool
+	filename   string
+	token      string
+	domain     string
+	useJF2     bool
+	tlo        bool
+	contentDir string
+	squashLeft []string
 }
 
 var version string = "custom"
@@ -45,12 +51,16 @@ func main() {
 	fmt.Printf("webmention.io-backup version %s\n", version)
 
 	config := cfg{}
+	var sl string
 	flag.StringVar(&config.filename, "f", "webmentions.json", "filename")
 	flag.StringVar(&config.token, "t", "", "API token")
 	flag.StringVar(&config.domain, "d", "", "domain to fetch webmentions for")
 	flag.BoolVar(&config.useJF2, "jf2", false, "use JF2 endpoint instead of the classic one")
 	flag.BoolVar(&config.tlo, "tlo", true, "wrap output in a top-level object (links list or feed)")
+	flag.StringVar(&config.contentDir, "cd", "", "directory to look for structure in; if specified, attempts are made to save according to paths")
+	flag.StringVar(&sl, "l", "", "list of top-level subdirs to drop while saving according to paths, comma-separated")
 	flag.Parse()
+	config.squashLeft = strings.Split(sl, ",")
 	url := endpointUrl(config)
 
 	mm, err := readFile(config.filename)
@@ -68,13 +78,20 @@ func main() {
 	if len(m) == 0 {
 		fmt.Println("no new webmentions")
 	} else {
-		fmt.Printf("appending %d new webmentions\n", len(m))
-		mm = append(mm, m...)
-		err = writeFile(mm, config)
-		if err != nil {
-			fmt.Println(err)
+		if config.contentDir != "" {
+			if err := saveToDirs(m, config); err != nil {
+				fmt.Println(err)
+				os.Exit(1)
+			}
 		} else {
-			fmt.Printf("saved %d webmentions to %s\n", len(mm), config.filename)
+			fmt.Printf("appending %d new webmentions\n", len(m))
+			mm = append(mm, m...)
+			err = writeFile(mm, config)
+			if err != nil {
+				fmt.Println(err)
+			} else {
+				fmt.Printf("saved %d webmentions to %s\n", len(mm), config.filename)
+			}
 		}
 	}
 
@@ -93,10 +110,7 @@ func readFile(fn string) (mm []interface{}, err error) {
 func findLatest(mm []interface{}) (latest int) {
 	for _, f := range mm {
 		m, _ := f.(map[string]interface{})
-		id, ok := m["id"]
-		if !ok {
-			id = m["wm-id"]
-		}
+		id := either(m, []string{"id", "wm-id"})
 		if l, ok := id.(float64); ok {
 			this := int(l)
 			if this > latest {
@@ -135,6 +149,114 @@ func writeFile(mm []interface{}, c cfg) error {
 	return err
 }
 
+func saveToDirs(mm []interface{}, c cfg) (err error) {
+	for _, m := range mm {
+		if !saveToDir(m, c) {
+			if err = saveToContentDir(m, c); err != nil {
+				return
+			}
+		}
+	}
+	return
+}
+
+func saveToDir(m interface{}, c cfg) bool {
+	if dir, ok := suggestDir(m, c); ok {
+		c.contentDir = filepath.Join(c.contentDir, dir)
+		if err := saveToContentDir(m, c); err == nil {
+			return true
+		}
+	}
+	return false
+}
+
+func saveToContentDir(m interface{}, c cfg) error {
+	if c.filename == "" {
+		return fmt.Errorf("no filename specified")
+	}
+	c.filename = filepath.Join(c.contentDir, c.filename)
+	return saveToFile(m, c)
+}
+
+func saveToFile(m interface{}, c cfg) (err error) {
+	mm, _ := readFile(c.filename)
+	for _, exm := range mm {
+		if sameMention(exm, m) {
+			return
+		}
+	}
+	mm = append(mm, m)
+	fmt.Printf("Saving new mention to %s\n", c.filename)
+	err = writeFile(mm, c)
+	return
+}
+
+func sameMention(ma interface{}, mb interface{}) bool {
+	mapa, oka := ma.(map[string]interface{})
+	mapb, okb := mb.(map[string]interface{})
+	if !oka || !okb {
+		return false
+	}
+
+	sa := either(mapa, []string{"source", "wm-source"})
+	sb := either(mapb, []string{"source", "wm-source"})
+	oa, oka := sa.(string)
+	ob, okb := sb.(string)
+	if !oka || !okb || oa != ob {
+		return false
+	}
+
+	sa = either(mapa, []string{"verified_date", "wm-received"})
+	sb = either(mapb, []string{"verified_date", "wm-received"})
+	oa, oka = sa.(string)
+	ob, okb = sb.(string)
+	ta, err := time.Parse(time.RFC3339, oa)
+	if err != nil {
+		return false
+	}
+	tb, err := time.Parse(time.RFC3339, ob)
+	if err != nil {
+		return false
+	}
+	if !oka || !okb || !ta.Equal(tb) {
+		return false
+	}
+
+	return true
+}
+
+func suggestDir(m interface{}, c cfg) (dir string, ok bool) {
+	mn, _ := m.(map[string]interface{})
+	t := either(mn, []string{"target", "wm-target"})
+	if tgt, ok := t.(string); ok {
+		return dirFromUrl(tgt, c), true
+	}
+	return "", false
+}
+
+func dirFromUrl(t string, c cfg) string {
+	u, err := url.Parse(t)
+	if err != nil {
+		return ""
+	}
+
+	p := strings.TrimPrefix(u.Path, "/")
+	p = trimOne(p, c.squashLeft)
+	p = path.Dir(p)
+	p = strings.TrimPrefix(p, "/")
+	return p
+}
+
+func trimOne(s string, vv []string) string {
+	for _, l := range vv {
+		r := strings.TrimPrefix(s, l)
+		if s != r {
+			return r
+		}
+	}
+	return s
+}
+
 func getPage(url string) (mm []interface{}, err error) {
 	resp, err := http.Get(url)
 	if err != nil {
@@ -158,10 +280,7 @@ func parsePage(b []byte) (mm []interface{}, err error) {
 	// or just an array of objects like we write it
 	switch m := f.(type) {
 	case map[string]interface{}:
-		mentions, ok := m["links"]
-		if !ok {
-			mentions = m["children"]
-		}
+		mentions := either(m, []string{"links", "children"})
 		if mnts, ok := mentions.([]interface{}); ok {
 			mm = mnts
 		}
@@ -229,4 +348,14 @@ func endpointUrl(c cfg) string {
 	u, _ := url.Parse(ep)
 	u.RawQuery = q.Encode()
 	return u.String()
+}
+
+// either returns the first value it finds while iterating kk for key
+func either(m map[string]interface{}, kk []string) interface{} {
+	for _, k := range kk {
+		if v, ok := m[k]; ok {
+			return v
+		}
+	}
+	return nil
 }

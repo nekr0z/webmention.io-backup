@@ -84,6 +84,68 @@ func TestReadFileErr(t *testing.T) {
 	}
 }
 
+func TestSaveToDirs(t *testing.T) {
+	cdir := filepath.Join("testdata", "site", "content")
+	mib := filepath.Join(cdir, "posts", "2020", "microblog-is-bad")
+	if err := os.MkdirAll(mib, 0777); err != nil {
+		t.Fatal(err)
+	}
+	defer os.RemoveAll(filepath.Join("testdata", "site"))
+
+	ex, err := readFile(filepath.Join("testdata", "existing.json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := writeFile(ex, cfg{filename: filepath.Join(mib, "webmentions.json"), useJF2: true, tlo: false}); err != nil {
+		t.Fatal(err)
+	}
+
+	mm, err := readFile(filepath.Join("testdata", "page.json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	c := cfg{squashLeft: []string{"en"}, contentDir: cdir, filename: "webmentions.json"}
+
+	if err := os.Chmod(cdir, 0555); err != nil {
+		t.Fatal(err)
+	}
+	if err := saveToDirs(mm, c); err == nil {
+		t.Fatalf("expected error on read-only directory")
+	}
+	if err := os.Chmod(cdir, 0777); err != nil {
+		t.Fatal(err)
+	}
+
+	if err := saveToDirs(mm, c); err != nil {
+		t.Fatal(err)
+	}
+
+	m, err := readFile(filepath.Join("testdata", "site", "content", "posts", "2020", "microblog-is-bad", "webmentions.json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(m) != 5 {
+		t.Fatalf("unexpected number of mentions saved, want 5, got %d", len(m))
+	}
+}
+
+func TestSaveToDirsErr(t *testing.T) {
+	tests := map[string]struct {
+		config cfg
+		fail   string
+	}{
+		"non-existent dir": {cfg{contentDir: "nosuchdir", filename: "wm.json"}, "expected error on non-existent directory"},
+		"no filename":      {cfg{contentDir: "testdata"}, "expected error on no filename given"},
+	}
+	for name, tc := range tests {
+		t.Run(name, func(t *testing.T) {
+			if err := saveToDirs([]interface{}{"empty mention"}, tc.config); err == nil {
+				t.Fatalf(tc.fail)
+			}
+		})
+	}
+}
+
 func TestWriteFile(t *testing.T) {
 	tt := map[string]struct {
 		config  cfg
