@@ -69,13 +69,14 @@ func main() {
 	if err != nil && config.contentDir == "" {
 		fmt.Println(err)
 	} else {
-		fmt.Printf("found %d existing webmentions, will fetch newer IDs", len(mm))
+		fmt.Printf("Found %d existing webmentions, will fetch newer IDs.\n", len(mm))
 	}
 
 	var m []interface{}
 	if !config.timestamp {
 		m, err = getNew(url, findLast(mm))
 	} else {
+		fmt.Println("Will check for timestamp.")
 		m, err = getNew(url, getTimestamp(mm))
 	}
 	if err != nil {
@@ -84,7 +85,7 @@ func main() {
 	}
 
 	if len(m) == 0 {
-		fmt.Println("no new webmentions")
+		fmt.Println("No new webmentions found.")
 	} else {
 		if config.contentDir != "" {
 			if err := saveToDirs(m, config); err != nil {
@@ -92,18 +93,18 @@ func main() {
 				os.Exit(1)
 			}
 		} else {
-			fmt.Printf("appending %d new webmentions\n", len(m))
+			fmt.Printf("Appending %d new webmentions.\n", len(m))
 			mm = append(mm, m...)
 			err = writeFile(mm, config)
 			if err != nil {
 				fmt.Println(err)
 			} else {
-				fmt.Printf("saved %d webmentions to %s\n", len(mm), config.filename)
+				fmt.Printf("Saved %d webmentions to %s.\n", len(mm), config.filename)
 			}
 		}
 	}
 
-	fmt.Println("all done!")
+	fmt.Println("All done!")
 }
 
 func readFile(fn string) (mm []interface{}, err error) {
