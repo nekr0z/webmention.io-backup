@@ -44,12 +44,12 @@ don't create the top-level object in the saved file (i.e. save as an array of we
 ```
 -cd [directory]
 ```
-look in the `directory` for the directory structure that represents the website's structure and try to save webmentions to the individual files (one for each page) in this directory structure; useful for saving webmentions into the source tree of an SSG project
+look in the `directory` for the directory structure that represents the website's structure and try to save webmentions to the individual files (one for each page) in this directory structure; useful for saving webmentions into the source tree of an SSG project.
 
 ```
 -l [list]
 ```
-list of comma-separated top-level directories to ignore when using `-cd`; with `-cd ./website -l en,fr` both webmentions for `my.site/en/page` and `my.site/fr/page/` will be saved to `./website/page/webmentions.json` instead of separate directories
+list of comma-separated top-level directories to ignore when using `-cd`; with `-cd ./website -l en,fr` both webmentions for `my.site/en/page` and `my.site/fr/page/` will be saved to `./website/page/webmentions.json` instead of separate directories.
 
 ```
 -ts
