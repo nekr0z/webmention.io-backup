@@ -26,6 +26,7 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 )
 
 var (
@@ -46,7 +47,7 @@ func TestFindLatest(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			got := findLatest(mm)
+			got := findLast(mm)
 			if got != tc.want {
 				t.Fatalf("want %v, got %v", got, tc.want)
 			}
@@ -104,7 +105,7 @@ func TestSaveToDirs(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	c := cfg{squashLeft: []string{"en"}, contentDir: cdir, filename: "webmentions.json"}
+	c := cfg{squashLeft: []string{"en"}, contentDir: cdir, filename: "webmentions.json", timestamp: true}
 
 	if err := os.Chmod(cdir, 0555); err != nil {
 		t.Fatal(err)
@@ -126,6 +127,27 @@ func TestSaveToDirs(t *testing.T) {
 	}
 	if len(m) != 5 {
 		t.Fatalf("unexpected number of mentions saved, want 5, got %d", len(m))
+	}
+
+	c.timestamp = false
+	mm, err = readFile(filepath.Join("testdata", "jf2.json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := saveToDirs(mm, c); err != nil {
+		t.Fatal(err)
+	}
+	mm, err = readFile(filepath.Join(c.contentDir, c.filename))
+	if err != nil {
+		t.Fatal(err)
+	}
+	want, _ := time.Parse(time.RFC3339, "2020-05-05T14:54:13+00:00")
+	got := getTimestamp(mm)
+	if !want.Equal(got) {
+		t.Fatalf("wrong timestamp, want %s, got %s", want, got)
+	}
+	if len(mm) != 18 {
+		t.Fatalf("unexpected number of mentions saved, want 18, got %d", len(mm))
 	}
 }
 
@@ -243,5 +265,19 @@ func TestEndpointUrl(t *testing.T) {
 				t.Fatalf("want:\n%s\ngot:\n%s\n", tc.want, got)
 			}
 		})
+	}
+}
+
+func TestGetTimestamp(t *testing.T) {
+	bb := []byte(`[{"timestamp":"2021-06-07T22:21:17Z"}]`)
+	mm, err := parsePage(bb)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	got := getTimestamp(mm)
+	want := time.Date(2021, 6, 7, 22, 21, 17, 0, time.UTC)
+	if !got.Equal(want) {
+		t.Fatalf("want %s, got %s", want, got)
 	}
 }

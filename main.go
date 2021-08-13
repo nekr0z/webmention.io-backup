@@ -43,6 +43,7 @@ type cfg struct {
 	tlo        bool
 	contentDir string
 	squashLeft []string
+	timestamp  bool
 }
 
 var version string = "custom"
@@ -69,7 +70,7 @@ func main() {
 	}
 	fmt.Printf("found %d existing webmentions\n", len(mm))
 
-	m, err := getNew(url, findLatest(mm))
+	m, err := getNew(url, findLast(mm))
 	if err != nil {
 		fmt.Println(err)
 		os.Exit(1)
@@ -107,7 +108,7 @@ func readFile(fn string) (mm []interface{}, err error) {
 	return
 }
 
-func findLatest(mm []interface{}) (latest int) {
+func findLast(mm []interface{}) (latest int) {
 	for _, f := range mm {
 		m, _ := f.(map[string]interface{})
 		id := either(m, []string{"id", "wm-id"})
@@ -150,12 +151,25 @@ func writeFile(mm []interface{}, c cfg) error {
 }
 
 func saveToDirs(mm []interface{}, c cfg) (err error) {
+	var ts time.Time
+	if c.timestamp {
+		fn := filepath.Join(c.contentDir, c.filename)
+		mm, _ := readFile(fn)
+		ts = getTimestamp(mm)
+	}
 	for _, m := range mm {
+		t := timeOf(m)
+		if t.After(ts) {
+			ts = t
+		}
 		if !saveToDir(m, c) {
 			if err = saveToContentDir(m, c); err != nil {
 				return
 			}
 		}
+	}
+	if c.timestamp {
+		err = writeTimestamp(ts, c)
 	}
 	return
 }
@@ -186,8 +200,13 @@ func saveToFile(m interface{}, c cfg) (err error) {
 		}
 	}
 	mm = append(mm, m)
-	fmt.Printf("Saving new mention to %s\n", c.filename)
+	fmt.Printf("Saving new mention to %s...", c.filename)
 	err = writeFile(mm, c)
+	if err == nil {
+		fmt.Println(" Saved!")
+	} else {
+		fmt.Println()
+	}
 	return
 }
 
@@ -324,6 +343,66 @@ func getNextPage(u *url.URL, page int) (mm []interface{}, err error) {
 	q.Set("page", strconv.Itoa(page))
 	u.RawQuery = q.Encode()
 	mm, err = getPage(u.String())
+	return
+}
+
+func timeOf(m interface{}) (t time.Time) {
+	e, _ := m.(map[string]interface{})
+	tm := either(e, []string{"verified_date", "wm-received"})
+	if ts, ok := tm.(string); ok {
+		if te, err := time.Parse(time.RFC3339, ts); err == nil {
+			t = te
+		}
+	}
+	return
+}
+
+func parseTimestamp(m interface{}) (ts time.Time, ok bool) {
+	e, _ := m.(map[string]interface{})
+	t := e["timestamp"]
+	if tst, yep := t.(string); yep {
+		tm, err := time.Parse(time.RFC3339, tst)
+		if err == nil {
+			ts = tm
+			ok = true
+		}
+	}
+	return
+}
+
+func getTimestamp(mm []interface{}) (ts time.Time) {
+	for _, m := range mm {
+		if tst, ok := parseTimestamp(m); ok && tst.After(ts) {
+			ts = tst
+		}
+	}
+	return
+}
+
+func setTimestamp(mm []interface{}, ts time.Time) (mmt []interface{}) {
+	for _, m := range mm {
+		if _, ok := parseTimestamp(m); !ok {
+			mmt = append(mmt, m)
+		}
+	}
+	var t interface{}
+	t = struct {
+		T string `json:"timestamp"`
+	}{ts.Format(time.RFC3339)}
+	mmt = append(mmt, t)
+	return
+}
+
+func writeTimestamp(ts time.Time, c cfg) (err error) {
+	fn := filepath.Join(c.contentDir, c.filename)
+	mm, err := readFile(fn)
+	if err != nil {
+		return
+	}
+
+	mm = setTimestamp(mm, ts)
+	c.filename = fn
+	err = writeFile(mm, c)
 	return
 }
 
