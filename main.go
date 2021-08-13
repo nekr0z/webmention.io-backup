@@ -398,8 +398,7 @@ func setTimestamp(mm []interface{}, ts time.Time) (mmt []interface{}) {
 			mmt = append(mmt, m)
 		}
 	}
-	var t interface{}
-	t = struct {
+	t := struct {
 		T string `json:"timestamp"`
 	}{ts.Format(time.RFC3339)}
 	mmt = append(mmt, t)
