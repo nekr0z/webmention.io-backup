@@ -51,6 +51,11 @@ look in the `directory` for the directory structure that represents the website'
 ```
 list of comma-separated top-level directories to ignore when using `-cd`; with `-cd ./website -l en,fr` both webmentions for `my.site/en/page` and `my.site/fr/page/` will be saved to `./website/page/webmentions.json` instead of separate directories
 
+```
+-ts
+```
+when using `-cd`, store a timestamp in the root directory and avoid re-fetching webmentions before that timestamp.
+
 ## Development
 Issues reports and pull requests are always welcome!
 

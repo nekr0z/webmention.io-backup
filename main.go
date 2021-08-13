@@ -60,17 +60,24 @@ func main() {
 	flag.BoolVar(&config.tlo, "tlo", true, "wrap output in a top-level object (links list or feed)")
 	flag.StringVar(&config.contentDir, "cd", "", "directory to look for structure in; if specified, attempts are made to save according to paths")
 	flag.StringVar(&sl, "l", "", "list of top-level subdirs to drop while saving according to paths, comma-separated")
+	flag.BoolVar(&config.timestamp, "ts", false, "save timestamp to root dir file and only fetch newer mentions")
 	flag.Parse()
 	config.squashLeft = strings.Split(sl, ",")
 	url := endpointUrl(config)
 
-	mm, err := readFile(config.filename)
-	if err != nil {
+	mm, err := readFile(filepath.Join(config.contentDir, config.filename))
+	if err != nil && config.contentDir == "" {
 		fmt.Println(err)
+	} else {
+		fmt.Printf("found %d existing webmentions, will fetch newer IDs", len(mm))
 	}
-	fmt.Printf("found %d existing webmentions\n", len(mm))
 
-	m, err := getNew(url, findLast(mm))
+	var m []interface{}
+	if !config.timestamp {
+		m, err = getNew(url, findLast(mm))
+	} else {
+		m, err = getNew(url, getTimestamp(mm))
+	}
 	if err != nil {
 		fmt.Println(err)
 		os.Exit(1)
@@ -312,14 +319,19 @@ func parsePage(b []byte) (mm []interface{}, err error) {
 	return
 }
 
-func getNew(uri string, latest int) (mm []interface{}, err error) {
+func getNew(uri string, latest interface{}) (mm []interface{}, err error) {
 	u, err := url.Parse(uri)
 	if err != nil {
 		return
 	}
 
 	q := u.Query()
-	q.Set("since_id", strconv.Itoa(latest))
+	switch l := latest.(type) {
+	case int:
+		q.Set("since_id", strconv.Itoa(l))
+	case time.Time:
+		q.Set("since", l.Format(time.RFC3339))
+	}
 	u.RawQuery = q.Encode()
 
 	ok := true

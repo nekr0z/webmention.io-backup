@@ -7,6 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Pre-release]
 ### Added
 * option to save webmentions for separate pages to separate files in the directory structure that represents the site structure
+* option to use timestamp to avoid re-downloading old webmentions in SSG mode
 
 ## [1.2.0] - 2021-08-10
 ### Added

@@ -203,27 +203,40 @@ func writeAndCompare(t *testing.T, mm []interface{}, c cfg, fn string) {
 }
 
 func TestGetNew(t *testing.T) {
-	pageF := filepath.Join("testdata", "page.json")
-	golden := filepath.Join("testdata", "page_processed.json")
-	page, _ := ioutil.ReadFile(pageF)
-	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.URL.Query().Get("since_id") != "20" {
-			t.Fatalf("expected since_id not in request")
-		}
-		if r.URL.Query().Get("page") == "" || r.URL.Query().Get("page") == "0" {
-			fmt.Fprintf(w, "%s", page)
-		} else {
-			fmt.Fprintf(w, "%s", `{"links":[]}`)
-		}
-	}))
-	defer ts.Close()
-
-	got, err := getNew(ts.URL, 20)
-	if err != nil {
-		t.Fatal(err)
+	tests := map[string]struct {
+		arg  interface{}
+		qKey string
+		qVal string
+	}{
+		"ID":        {20, "since_id", "20"},
+		"Timestamp": {time.Date(2018, 1, 1, 0, 0, 0, 0, time.UTC), "since", "2018-01-01T00:00:00Z"},
 	}
 
-	writeAndCompare(t, got, cfg{tlo: false}, golden)
+	for name, tc := range tests {
+		t.Run(name, func(t *testing.T) {
+			pageF := filepath.Join("testdata", "page.json")
+			golden := filepath.Join("testdata", "page_processed.json")
+			page, _ := ioutil.ReadFile(pageF)
+			ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				if r.URL.Query().Get(tc.qKey) != tc.qVal {
+					t.Fatalf("expected since key not in request")
+				}
+				if r.URL.Query().Get("page") == "" || r.URL.Query().Get("page") == "0" {
+					fmt.Fprintf(w, "%s", page)
+				} else {
+					fmt.Fprintf(w, "%s", `{"links":[]}`)
+				}
+			}))
+			defer ts.Close()
+
+			got, err := getNew(ts.URL, tc.arg)
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			writeAndCompare(t, got, cfg{tlo: false}, golden)
+		})
+	}
 }
 
 func assertGolden(t *testing.T, actual []byte, golden string) {
