@@ -176,6 +176,7 @@ func TestWriteFile(t *testing.T) {
 		"legacy":   {cfg{useJF2: false, tlo: true}, "legacy.out"},
 		"JF2 feed": {cfg{useJF2: true, tlo: true}, "jf2.out"},
 		"array":    {cfg{useJF2: false, tlo: false}, "array.out"},
+		"pretty":   {cfg{pretty: true, tlo: true}, "pretty.out"},
 	}
 
 	for name, tc := range tt {

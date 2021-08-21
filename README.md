@@ -42,6 +42,11 @@ use the `/api/mentions.jf2` endpoint instead of `/api/mentions`. The produced JS
 don't create the top-level object in the saved file (i.e. save as an array of webmentions).
 
 ```
+-p
+```
+pretty-print (`jq`-style) the saved file.
+
+```
 -cd [directory]
 ```
 look in the `directory` for the directory structure that represents the website's structure and try to save webmentions to the individual files (one for each page) in this directory structure; useful for saving webmentions into the source tree of an SSG project.

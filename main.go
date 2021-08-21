@@ -41,6 +41,7 @@ type cfg struct {
 	domain     string
 	useJF2     bool
 	tlo        bool
+	pretty     bool
 	contentDir string
 	squashLeft []string
 	timestamp  bool
@@ -58,6 +59,7 @@ func main() {
 	flag.StringVar(&config.domain, "d", "", "domain to fetch webmentions for")
 	flag.BoolVar(&config.useJF2, "jf2", false, "use JF2 endpoint instead of the classic one")
 	flag.BoolVar(&config.tlo, "tlo", true, "wrap output in a top-level object (links list or feed)")
+	flag.BoolVar(&config.pretty, "p", false, "pretty-print the output (jq-style)")
 	flag.StringVar(&config.contentDir, "cd", "", "directory to look for structure in; if specified, attempts are made to save according to paths")
 	flag.StringVar(&sl, "l", "", "list of top-level subdirs to drop while saving according to paths, comma-separated")
 	flag.BoolVar(&config.timestamp, "ts", false, "save timestamp to root dir file and only fetch newer mentions")
@@ -149,6 +151,9 @@ func writeFile(mm []interface{}, c cfg) error {
 		}
 	}
 	enc := json.NewEncoder(&bb)
+	if c.pretty {
+		enc.SetIndent("", "  ")
+	}
 	enc.SetEscapeHTML(false)
 	err := enc.Encode(f)
 	if err != nil {
