@@ -13,16 +13,43 @@ jobs:
           fetch-depth: 0
       - uses: actions/setup-go@v2
         with:
-          go-version: 1.15
+          go-version: 1.16
+
+      - name: install nekr0z/changelog
+        run: |
+          go install github.com/nekr0z/changelog/cmd/changelog@latest
+
+      - uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: 2.7
+          bundler-cache: true
+
+      - name: install fpm
+        run: gem install fpm
 
       - name: build packages
         run: |
+          git fetch --tags --force
           mkdir release
-          bash <(VER=$(go generate); for ARCH in amd64 386 arm arm64; do GOARCH=$ARCH go build -ldflags "-X main.version=$VER"; tar -czf release/webmention.io-backup-$VER-linux-$ARCH.tar.gz webmention.io-backup LICENSE README.md CHANGELOG.md; done)
+          changelog -n "Evgeny Kuznetsov" -e "evgeny@kuznetsov.md" -p "webmention.io-backup" CHANGELOG.md
+          bash <(VER=$(go generate); for ARCH in amd64 386 arm arm64; do GOARCH=$ARCH go build -ldflags "-X main.version=$VER"; tar -czf release/webmention.io-backup-$VER-linux-$ARCH.tar.gz webmention.io-backup LICENSE README.md CHANGELOG.md SOURCE.txt; fpm -t deb -s dir -a $ARCH -n webmention.io-backup -v ${VER%+*} -m "Evgeny Kuznetsov <evgeny@kuznetsov.md>" --deb-changelog debian.changelog --license GPL-3 --deb-priority optional --url https://github.com/nekr0z/webmention.io-backup --category net --vendor "Evgeny Kuznetsov <evgeny@kuznetsov.md>" --description "A tool to backup webmentions stored on webmention.io." LICENSE=/usr/share/doc/webmention.io-backup/ README.md=/usr/share/doc/webmention.io-backup/ SOURCE.txt=/usr/share/doc/webmention.io-backup webmention.io-backup=/usr/bin/ >/dev/null; mv *.deb release/; done)
           bash <(VER=$(go generate); for ARCH in amd64 386; do GOOS=windows GOARCH=$ARCH go build -ldflags "-X main.version=$VER"; zip -q release/webmention.io-backup-$VER-windows-$ARCH.zip webmention.io-backup.exe LICENSE README.md CHANGELOG.md; done)          
+          cd release
+          fpm -s deb -t deb -a i386 *386.deb
+          rm *_386.deb
+          fpm -s deb -t deb -a armel *arm.deb
+          rm *arm.deb
       - name: release
         uses: marvinpinto/action-automatic-releases@v1.2.1
         with:
           repo_token: "${{ secrets.GITHUB_TOKEN }}"
           prerelease: false
           files: "release/*"
+
+      - name: trigger repository update
+        uses: appleboy/ssh-action@v0.1.4
+        with:
+          host: evgkuz.org
+          username: evgeny
+          key: ${{ secrets.SSH_KEY }}
+          script: webmention.io-backup
