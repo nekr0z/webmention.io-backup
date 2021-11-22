@@ -1,3 +1,3 @@
-module github.com/nekr0z/webmention.io-backup
+module evgenykuznetsov.org/go/webmention.io-backup
 
 go 1.15
