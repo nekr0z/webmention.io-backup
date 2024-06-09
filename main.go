@@ -26,11 +26,12 @@ import (
 	"net/http"
 	"net/url"
 	"os"
-	"path"
 	"path/filepath"
 	"strconv"
 	"strings"
 	"time"
+
+	ipath "evgenykuznetsov.org/go/webmention.io-backup/internal/path"
 )
 
 const endpoint = "https://webmention.io/api/mentions"
@@ -44,6 +45,7 @@ type cfg struct {
 	pretty     bool
 	contentDir string
 	squashLeft []string
+	languages  bool
 	timestamp  bool
 }
 
@@ -62,6 +64,7 @@ func main() {
 	flag.BoolVar(&config.pretty, "p", false, "pretty-print the output (jq-style)")
 	flag.StringVar(&config.contentDir, "cd", "", "directory to look for structure in; if specified, attempts are made to save according to paths")
 	flag.StringVar(&sl, "l", "", "list of top-level subdirs to drop while saving according to paths, comma-separated")
+	flag.BoolVar(&config.languages, "lang", false, "insert language into the filename before extension (for Hugo page bundles)")
 	flag.BoolVar(&config.timestamp, "ts", false, "save timestamp to root dir file and only fetch newer mentions")
 	flag.Parse()
 	config.squashLeft = strings.Split(sl, ",")
@@ -188,13 +191,22 @@ func saveToDirs(mm []interface{}, c cfg) (err error) {
 }
 
 func saveToDir(m interface{}, c cfg) bool {
-	if dir, ok := suggestDir(m, c); ok {
-		c.contentDir = filepath.Join(c.contentDir, dir)
-		if err := saveToContentDir(m, c); err == nil {
-			return true
-		}
+	mn, _ := m.(map[string]interface{})
+	t := either(mn, []string{"target", "wm-target"})
+	tgt, ok := t.(string)
+	if !ok {
+		return false
 	}
-	return false
+
+	dir := ipath.DirFromUrl(tgt, c.squashLeft)
+	if c.languages {
+		c.filename = ipath.FilenameFromUrl(tgt, c.squashLeft, c.filename)
+	}
+
+	c.contentDir = filepath.Join(c.contentDir, dir)
+
+	err := saveToContentDir(m, c)
+	return err == nil
 }
 
 func saveToContentDir(m interface{}, c cfg) error {
@@ -255,38 +267,6 @@ func sameMention(ma, mb interface{}) bool {
 	}
 
 	return true
-}
-
-func suggestDir(m interface{}, c cfg) (dir string, ok bool) {
-	mn, _ := m.(map[string]interface{})
-	t := either(mn, []string{"target", "wm-target"})
-	if tgt, ok := t.(string); ok {
-		return dirFromUrl(tgt, c), true
-	}
-	return "", false
-}
-
-func dirFromUrl(t string, c cfg) string {
-	u, err := url.Parse(t)
-	if err != nil {
-		return ""
-	}
-
-	p := strings.TrimPrefix(u.Path, "/")
-	p = trimOne(p, c.squashLeft)
-	p = path.Dir(p)
-	p = strings.TrimPrefix(p, "/")
-	return p
-}
-
-func trimOne(s string, vv []string) string {
-	for _, l := range vv {
-		r := strings.TrimPrefix(s, l)
-		if s != r {
-			return r
-		}
-	}
-	return s
 }
 
 func getPage(url string) (mm []interface{}, err error) {
