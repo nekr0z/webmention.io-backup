@@ -24,6 +24,9 @@ jobs:
           ruby-version: 2.7
           bundler-cache: true
 
+      - name: install dotenv
+        run: gem install dotenv -v 2.8.1
+
       - name: install fpm
         run: gem install fpm
 
