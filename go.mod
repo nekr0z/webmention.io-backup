@@ -1,3 +1,3 @@
 module evgenykuznetsov.org/go/webmention.io-backup
 
-go 1.15
+go 1.16
